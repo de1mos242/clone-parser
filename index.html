@@ -9,21 +9,45 @@
     var height = 1200;
     var color = d3.scaleOrdinal(d3.schemeCategory10);
 
-    d3.json("prepared_data.json").then(function(graph) {
+    d3.json("prepared_data.json").then(function (graph) {
 
         var label = {
             'nodes': [],
             'links': []
         };
+        work_nodes = [];
 
-        graph.nodes.forEach(function(d, i) {
+        graph.nodes = graph.nodes.filter(function (value) { return value.group > 3 });
+
+        graph.nodes.forEach(function (d, i) {
             label.nodes.push({node: d});
             label.nodes.push({node: d});
             label.links.push({
                 source: i * 2,
                 target: i * 2 + 1
             });
+            work_nodes.push(d.id);
+
         });
+
+        work_links = [];
+        graph.links.forEach(function (d) {
+            var foundSource = false;
+            var foundTarget = false;
+            for (var i = 0; i < work_nodes.length; i++) {
+                if (work_nodes[i] == d.source) {
+                    foundSource = true;
+                }
+                if (work_nodes[i] == d.target) {
+                    foundTarget = true;
+                }
+            }
+            if (foundSource && foundTarget) {
+                work_links.push(d);
+            }
+        });
+        graph.links = work_links;
+
 
         var labelLayout = d3.forceSimulation(label.nodes)
             .force("charge", d3.forceManyBody().strength(-50))
@@ -34,12 +58,14 @@
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("x", d3.forceX(width / 2).strength(1))
             .force("y", d3.forceY(height / 2).strength(1))
-            .force("link", d3.forceLink(graph.links).id(function(d) {return d.id; }).distance(50).strength(1))
+            .force("link", d3.forceLink(graph.links).id(function (d) {
+                return d.id;
+            }).distance(50).strength(1))
             .on("tick", ticked);
 
         var adjlist = [];
 
-        graph.links.forEach(function(d) {
+        graph.links.forEach(function (d) {
             adjlist[d.source.index + "-" + d.target.index] = true;
             adjlist[d.target.index + "-" + d.source.index] = true;
         });
@@ -55,7 +81,9 @@
         svg.call(
             d3.zoom()
                 .scaleExtent([.1, 4])
-                .on("zoom", function() { container.attr("transform", d3.event.transform); })
+                .on("zoom", function () {
+                    container.attr("transform", d3.event.transform);
+                })
         );
 
         var link = container.append("g").attr("class", "links")
@@ -74,11 +102,13 @@
             // .attr("r", 5)
             // .attr("fill", function(d) { return color(d.group); })
             .append("svg:image")
-            .attr("xlink:href", function(d) { return d.img})
-            .attr("x", -16)
-            .attr("y", -16)
-            .attr("width", 32)
-            .attr("height", 32);
+            .attr("xlink:href", function (d) {
+                return d.img
+            })
+            .attr("x", -32)
+            .attr("y", -32)
+            .attr("width", 64)
+            .attr("height", 64);
 
         node.on("mouseover", focus).on("mouseout", unfocus);
 
@@ -94,7 +124,9 @@
             .data(label.nodes)
             .enter()
             .append("text")
-            .text(function(d, i) { return i % 2 == 0 ? "" : d.node.name; })
+            .text(function (d, i) {
+                return i % 2 == 0 ? "" : d.node.name;
+            })
             .style("fill", "#555")
             .style("font-family", "Arial")
             .style("font-size", 12)
@@ -108,8 +140,8 @@
             link.call(updateLink);
 
             labelLayout.alphaTarget(0.3).restart();
-            labelNode.each(function(d, i) {
-                if(i % 2 == 0) {
+            labelNode.each(function (d, i) {
+                if (i % 2 == 0) {
                     d.x = d.node.x;
                     d.y = d.node.y;
                 } else {
@@ -137,13 +169,13 @@
 
         function focus(d) {
             var index = d3.select(d3.event.target).datum().index;
-            node.style("opacity", function(o) {
+            node.style("opacity", function (o) {
                 return neigh(index, o.index) ? 1 : 0.1;
             });
-            labelNode.attr("display", function(o) {
-                return neigh(index, o.node.index) ? "block": "none";
+            labelNode.attr("display", function (o) {
+                return neigh(index, o.node.index) ? "block" : "none";
             });
-            link.style("opacity", function(o) {
+            link.style("opacity", function (o) {
                 return o.source.index == index || o.target.index == index ? 1 : 0.1;
             });
         }
@@ -155,14 +187,22 @@
         }
 
         function updateLink(link) {
-            link.attr("x1", function(d) { return fixna(d.source.x); })
-                .attr("y1", function(d) { return fixna(d.source.y); })
-                .attr("x2", function(d) { return fixna(d.target.x); })
-                .attr("y2", function(d) { return fixna(d.target.y); });
+            link.attr("x1", function (d) {
+                return fixna(d.source.x);
+            })
+                .attr("y1", function (d) {
+                    return fixna(d.source.y);
+                })
+                .attr("x2", function (d) {
+                    return fixna(d.target.x);
+                })
+                .attr("y2", function (d) {
+                    return fixna(d.target.y);
+                });
         }
 
         function updateNode(node) {
-            node.attr("transform", function(d) {
+            node.attr("transform", function (d) {
                 return "translate(" + fixna(d.x) + "," + fixna(d.y) + ")";
             });
         }
